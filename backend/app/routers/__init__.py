@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from app.routers import cluster as router_cluster
 from app.routers import shard as router_shard
+from app.routers import coverage as router_coverage
 from app.routers import merge as router_merge
 from app.routers import nodecheck as router_nodecheck
 from app.routers import balance as router_balance
@@ -23,4 +24,4 @@ from app.routers import verify as router_verify
 from app.routers import audit as router_audit
 from app.routers import storage as router_storage
 
-ROUTERS = [router_cluster, router_shard, router_merge, router_nodecheck, router_balance, router_resume, router_dashboard, router_crawlconf, router_datasource, router_logparse, router_ratelimit, router_proxy, router_robot, router_verify, router_audit, router_storage]
+ROUTERS = [router_cluster, router_shard, router_coverage, router_merge, router_nodecheck, router_balance, router_resume, router_dashboard, router_crawlconf, router_datasource, router_logparse, router_ratelimit, router_proxy, router_robot, router_verify, router_audit, router_storage]

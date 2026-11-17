@@ -30,6 +30,18 @@ def list_entries(
     return PageResult(items=items, total=total, page=page, size=size)
 
 
+@router.get("/coverage", response_model=dict)
+def coverage_view() -> dict[str, Any]:
+    """同步读取聚合侧的新增分片覆盖准入汇总与分片覆盖清单。"""
+    return service.coverage_view()
+
+
+@router.get("/coverage/{plan:path}", response_model=dict)
+def plan_coverage(plan: str) -> dict[str, Any]:
+    """按采集计划逐片核对覆盖区间、分配节点与容量上限。"""
+    return service.plan_coverage(plan)
+
+
 @router.get("/{entry_id}", response_model=dict)
 def get_entry(entry_id: int) -> dict:
     """读取单条分片任务明细；不存在时给出可读的错误说明。"""
@@ -41,11 +53,14 @@ def get_entry(entry_id: int) -> dict:
 
 @router.post("", response_model=ActionResult)
 def create_entry(payload: EntryPayload) -> ActionResult:
-    """登记一条分片任务，缺字段时说明原因而不是静默丢弃。"""
-    entry, missing = service.create_entry(payload.values)
+    """登记一条分片任务：先过覆盖准入核对，缺字段或范围重复时说明原因。"""
+    entry, missing, message = service.create_entry(payload.values)
     if missing:
         return ActionResult(ok=False, message=f"缺少必填字段：{'、'.join(missing)}")
-    return ActionResult(ok=True, message="分片任务已登记", entry=entry)
+    if entry is None:
+        return ActionResult(ok=False, message=message or "分片任务未通过覆盖准入核对")
+    suffix = f"：{message}" if message else ""
+    return ActionResult(ok=True, message=f"分片任务已登记并完成覆盖准入{suffix}", entry=entry)
 
 
 @router.post("/{entry_id}/actions", response_model=ActionResult)

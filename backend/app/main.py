@@ -10,6 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.routers import ROUTERS
+from app.seed_coverage import bootstrap_coverage
+from app.services.coverage import CoverageService
 from app.store import store
 
 app = FastAPI(title="分布式采集调度引擎", version="1.0.0")
@@ -25,6 +27,9 @@ app.add_middleware(
 for module in ROUTERS:
     app.include_router(module.router)
 
+# 示例覆盖数据放在路由注册之后加载，服务起来就能看到批次、清单与容量结论。
+bootstrap_coverage()
+
 
 @app.get("/api/health")
 def health() -> dict[str, object]:
@@ -35,4 +40,6 @@ def health() -> dict[str, object]:
 @app.get("/api/overview")
 def overview() -> dict[str, object]:
     """运营概览：把各业务模块的待处理量汇总成看板卡片。"""
-    return store.overview()
+    payload = store.overview()
+    payload["coverage"] = CoverageService().coverage_snapshot()["summary"]
+    return payload

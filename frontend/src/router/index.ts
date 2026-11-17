@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Overview from '@/views/Overview.vue'
 const Cluster = () => import('@/views/cluster/index.vue')
 const Shard = () => import('@/views/shard/index.vue')
+const Coverage = () => import('@/views/coverage/index.vue')
 const Merge = () => import('@/views/merge/index.vue')
 const Nodecheck = () => import('@/views/nodecheck/index.vue')
 const Balance = () => import('@/views/balance/index.vue')
@@ -24,6 +25,7 @@ const router = createRouter({
     { path: '/', name: 'overview', component: Overview },
     { path: '/cluster', name: 'cluster', component: Cluster },
     { path: '/shard', name: 'shard', component: Shard },
+    { path: '/coverage', name: 'coverage', component: Coverage },
     { path: '/merge', name: 'merge', component: Merge },
     { path: '/nodecheck', name: 'nodecheck', component: Nodecheck },
     { path: '/balance', name: 'balance', component: Balance },

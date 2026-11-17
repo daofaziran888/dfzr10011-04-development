@@ -4,9 +4,14 @@
 """
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 from app.seed import SEED_ROWS
+
+# 分片覆盖准入是「读明细 -> 算覆盖 -> 写清单」的多步流程，用一把可重入锁把整段计算串起来；
+# 并发分配节点时不会出现两个请求各自看到旧覆盖、最后写出两份同范围分片。
+ADMISSION_LOCK = threading.RLock()
 
 
 class Store:

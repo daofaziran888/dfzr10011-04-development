@@ -41,6 +41,30 @@ class ClusterEntry(BaseModel):
     field_6: str | None = None  # 心跳时间
     field_7: str | None = None  # 节点状态
 
+class CoverageEntry(BaseModel):
+    """分片覆盖清单明细结构。"""
+
+    field_0: str | None = None  # 覆盖编号
+    field_1: str | None = None  # 采集计划
+    field_2: str | None = None  # 覆盖区间
+    field_3: str | None = None  # 分配节点
+    field_4: str | None = None  # 占用容量
+    field_5: str | None = None  # 节点容量上限
+    field_6: str | None = None  # 来源版本
+    field_7: str | None = None  # 条目状态
+
+class CoverageBatch(BaseModel):
+    """分片覆盖准入汇总结构。"""
+
+    field_0: str | None = None  # 覆盖编号
+    field_1: str | None = None  # 采集计划
+    field_2: str | None = None  # 范围版本
+    field_3: str | None = None  # 冲突策略
+    field_4: str | None = None  # 处理结论
+    field_5: str | None = None  # 覆盖目标
+    field_6: str | None = None  # 未覆盖区间
+    field_7: str | None = None  # 条目状态
+
 class ShardEntry(BaseModel):
     """分片任务明细结构。"""
 

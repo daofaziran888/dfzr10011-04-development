@@ -30,6 +30,27 @@ def list_entries(
     return PageResult(items=items, total=total, page=page, size=size)
 
 
+@router.get("/coverage", response_model=dict)
+def coverage_view() -> dict[str, Any]:
+    """聚合侧读取的新增分片覆盖准入汇总与分片覆盖清单，全部来自同一份清单数据。"""
+    return service.coverage_view()
+
+
+@router.get("/coverage/entries", response_model=PageResult[dict])
+def coverage_entries(
+    plan: str | None = Query(default=None, description="按采集计划过滤"),
+    page: int = 1,
+    size: int = 20,
+) -> PageResult[dict]:
+    """分片覆盖清单明细：供聚合逐片核对覆盖区间与容量上限。"""
+    if size > 200:
+        raise HTTPException(status_code=400, detail="每页最多 200 条，请缩小分页范围")
+    rows = [row for row in service.coverage_entries() if not plan or row.get("采集计划") == plan]
+    total = len(rows)
+    start = max(page - 1, 0) * size
+    return PageResult(items=rows[start:start + size], total=total, page=page, size=size)
+
+
 @router.get("/{entry_id}", response_model=dict)
 def get_entry(entry_id: int) -> dict:
     """读取单条聚合任务明细；不存在时给出可读的错误说明。"""
@@ -41,11 +62,24 @@ def get_entry(entry_id: int) -> dict:
 
 @router.post("", response_model=ActionResult)
 def create_entry(payload: EntryPayload) -> ActionResult:
-    """登记一条聚合任务，缺字段时说明原因而不是静默丢弃。"""
+    """登记一条聚合任务；覆盖不完整或缺少字段时说明原因，而不是静默建立任务。"""
     entry, missing = service.create_entry(payload.values)
     if missing:
         return ActionResult(ok=False, message=f"缺少必填字段：{'、'.join(missing)}")
+    if entry is None:
+        plan = str(payload.values.get("采集计划") or "").strip()
+        return ActionResult(
+            ok=False,
+            message=f"采集计划 {plan} 的分片覆盖不完整，聚合只能读取完整覆盖版本",
+        )
     return ActionResult(ok=True, message="聚合任务已登记", entry=entry)
+
+
+@router.post("/pending/build", response_model=ActionResult)
+def build_pending() -> ActionResult:
+    """按完整覆盖清单建立待归并条目；重复提交不会生成第二个同范围条目。"""
+    created, skipped, message = service.build_pending_tasks()
+    return ActionResult(ok=True, message=message, entry={"created": created, "skipped": skipped})
 
 
 @router.post("/{entry_id}/actions", response_model=ActionResult)

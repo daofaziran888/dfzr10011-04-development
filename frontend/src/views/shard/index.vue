@@ -6,17 +6,43 @@
         <p class="page-desc">维护任务分片的范围划分、节点分配与重试控制，为任务分片调度提供可验证的数据工程流程。</p>
       </div>
       <div class="page-actions">
-        <button class="btn primary" type="button" @click="openCreate">登记分片任务</button>
+        <RouterLink class="btn primary" to="/coverage">登记分片任务</RouterLink>
         <button class="btn" type="button" @click="exportRows">导出任务分片调度清单</button>
       </div>
     </header>
 
     <div class="stat-row">
-      <article v-for="item in stats" :key="item.label" class="stat-card">
+      <article v-for="item in statCards" :key="item.label" class="stat-card">
         <span class="stat-label">{{ item.label }}</span>
         <strong class="stat-value">{{ item.value }}</strong>
       </article>
     </div>
+
+    <div class="section-title">
+      <h3>分片覆盖准入与容量核对</h3>
+      <span>与聚合侧同一份清单：每个分片只占用一个容量版本，逐片核对区间与节点容量上限</span>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr><th>覆盖编号</th><th>采集计划</th><th>条目类型</th><th>覆盖区间</th><th>分配节点</th><th>占用容量</th><th>节点容量上限</th><th>来源版本</th><th>条目状态</th></tr>
+      </thead>
+      <tbody>
+        <tr v-for="row in coverageEntries" :key="String(row.id)">
+          <td>{{ row.覆盖编号 ?? '—' }}</td>
+          <td>{{ row.采集计划 ?? '—' }}</td>
+          <td>{{ row.条目类型 ?? '—' }}</td>
+          <td>{{ row.覆盖区间 ?? '—' }}</td>
+          <td>{{ row.分配节点 ?? '—' }}</td>
+          <td>{{ row.占用容量 ?? '—' }}</td>
+          <td>{{ row.节点容量上限 ?? '—' }}</td>
+          <td>{{ row.来源版本 ?? '—' }}</td>
+          <td>{{ row.条目状态 ?? '—' }}</td>
+        </tr>
+        <tr v-if="!coverageEntries.length">
+          <td colspan="9" class="empty-state">暂无覆盖清单明细</td>
+        </tr>
+      </tbody>
+    </table>
 
     <form class="filter-bar" @submit.prevent="reload">
       <label v-for="field in filterFields" :key="field" class="filter-item">
@@ -63,9 +89,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 
-import { request } from '@/api/client'
+import { fetchJson, request } from '@/api/client'
 
 type Row = Record<string, string | number | null>
 
@@ -73,10 +99,18 @@ const ENDPOINT = '/api/shard'
 const columns = ["分片编号", "采集计划", "分片范围", "分配节点", "开始时间", "结束时间", "重试次数", "分片状态"]
 const actions = ["分配节点", "重试分片", "标记完成"]
 const statuses = ["待分配", "执行中", "已完成", "执行失败"]
-const stats = [{"label": "分片任务总数", "value": 0}, {"label": "执行中分片", "value": 0}, {"label": "已完成分片", "value": 0}]
-
 const rows = ref<Row[]>([])
 const total = ref(0)
+const coverageEntries = ref<Record<string, unknown>[]>([])
+const coverageSummary = ref<Record<string, number>>({})
+
+const statCards = computed(() => [
+  { label: '分片任务总数', value: total.value },
+  { label: '执行中分片', value: rows.value.filter((row) => row['status'] === '执行中').length },
+  { label: '已完成分片', value: rows.value.filter((row) => row['status'] === '已完成').length },
+  { label: '覆盖清单条目', value: coverageSummary.value['分片条目数'] ?? 0 },
+  { label: '未覆盖区间', value: coverageSummary.value['未覆盖区间数'] ?? 0 },
+])
 const errorMessage = ref('')
 const filters = ref<Record<string, string>>({})
 const filterFields = columns.slice(0, 3)
@@ -88,10 +122,6 @@ function resetFilters() {
 
 function exportRows() {
   window.open(`${ENDPOINT}/export`, '_blank')
-}
-
-function openCreate() {
-  errorMessage.value = '分片任务登记入口尚未接入审批流'
 }
 
 async function runAction(action: string, row: Row) {
@@ -121,6 +151,12 @@ async function reload() {
     const payload = await response.json()
     rows.value = payload.items ?? []
     total.value = payload.total ?? rows.value.length
+    const coverage = await fetchJson<{
+      summary: Record<string, number>
+      entries: Record<string, unknown>[]
+    }>('/api/shard/coverage')
+    coverageSummary.value = coverage.summary ?? {}
+    coverageEntries.value = coverage.entries ?? []
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '任务分片调度列表读取失败'
   }
